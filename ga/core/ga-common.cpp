@@ -34,6 +34,10 @@
 #include <android/log.h>
 #endif
 
+#if !defined(WIN32) && !defined(__APPLE__) && !defined(ANDROID)
+#include <X11/Xlib.h>
+#endif
+
 #include "ga-common.h"
 #include "ga-conf.h"
 #include "ga-avcodec.h"
@@ -237,7 +241,7 @@ ga_crop_window(struct gaRect *rect, struct gaRect **prect) {
 	char wndname[1024], wndclass[1024];
 	char *pname;
 	char *pclass;
-	int find_wnd_arg = 0;
+	int dw, dh, find_wnd_arg = 0;
 	HWND hWnd;
 	RECT client;
 	POINT lt, rb;
@@ -265,6 +269,8 @@ ga_crop_window(struct gaRect *rect, struct gaRect **prect) {
 	}
 	//
 	GetWindowText(hWnd, wndname, sizeof(wndname));
+	dw = GetSystemMetrics(SM_CXSCREEN);
+	dh = GetSystemMetrics(SM_CYSCREEN);
 	//
 	ga_error("Found window (0x%08x) :%s%s%s%s\n", hWnd,
 		pclass ? " class=" : "",
@@ -305,8 +311,8 @@ ga_crop_window(struct gaRect *rect, struct gaRect **prect) {
 	if((rect->bottom - rect->top + 1) % 2 != 0)
 		rect->top--;
 	//
-	if(rect->left < 0 || rect->top < 0) {
-		ga_error("Invalid window: (%d,%d)-(%d,%d) w=%d h=%d.\n",
+	if(rect->left < 0 || rect->top < 0 || rect->right >= dw || rect->bottom >= dh) {
+		ga_error("Invalid window: (%d,%d)-(%d,%d) w=%d h=%d (screen dimension = %dx%d).\n",
 			rect->left, rect->top, rect->right, rect->bottom,
 			rect->right - rect->left + 1,
 			rect->bottom - rect->top + 1);
@@ -316,27 +322,125 @@ ga_crop_window(struct gaRect *rect, struct gaRect **prect) {
 	*prect = rect;
 	return 1;
 }
-#else
+#elif defined(__APPLE__) || defined(ANDROID)
 int
 ga_crop_window(struct gaRect *rect, struct gaRect **prect) {
-	// XXX: implement find window for other platforms
+	// XXX: implement find window for Apple
 	*prect = NULL;
-#if 0
+	return 0;
+}
+#else /* X11 */
+Window
+FindWindowX(Display *dpy, Window top, const char *name) {
+	Window *children, dummy;
+	unsigned int i, nchildren;
+	Window w = 0;
+	char *window_name;
+
+	if(XFetchName(dpy, top, &window_name) && !strcmp(window_name, name)) {
+		return(top);
+	}
+
+	if(!XQueryTree(dpy, top, &dummy, &dummy, &children, &nchildren))
+		return(0);
+
+	for(i = 0; i < nchildren; i++) {
+		w = FindWindowX(dpy, children[i], name);
+		if (w) {
+			break;
+		}
+	}
+
+	if (children)
+		XFree ((char *)children);
+
+	return(w);
+}
+
+int
+GetClientRectX(Display *dpy, int screen, Window window, struct gaRect *rect) {
+	XWindowAttributes win_attributes;
+	int rx, ry;
+	Window tmpwin;
+	//
+	if(rect == NULL)
+		return -1;
+	if(!XGetWindowAttributes(dpy, window, &win_attributes))
+		return -1;
+	XTranslateCoordinates(dpy, window, win_attributes.root,
+		-win_attributes.border_width,
+		-win_attributes.border_width,
+		&rx, &ry, &tmpwin);
+	rect->left = rx;
+	rect->top = ry;
+	rect->right = rx + win_attributes.width - 1;
+	rect->bottom = ry + win_attributes.height - 1;
+	return 0;
+}
+
+int
+ga_crop_window(struct gaRect *rect, struct gaRect **prect) {
+	char display[16], wndname[1024];
+	char *pdisplay, *pname;
+	Display *d = NULL;
+	int dw, dh, screen = 0;
+	Window w = 0;
+	//
 	if(rect == NULL || prect == NULL)
 		return -1;
-	rect->left = 100;
-	rect->top = 100;
-	rect->right = 739;
-	rect->bottom = 579;
+	//
+	if((pdisplay = ga_conf_readv("display", display, sizeof(display))) == NULL) {
+		*prect = NULL;
+		return 0;
+	}
+	if((pname = ga_conf_readv("find-window-name", wndname, sizeof(wndname))) == NULL) {
+		*prect = NULL;
+		return 0;
+	}
+	//
+	if((d = XOpenDisplay(pdisplay)) == NULL) {
+		ga_error("ga_crop_window: cannot open display %s\n", display);
+		return -1;
+	}
+	screen = XDefaultScreen(d);
+	dw = DisplayWidth(d, screen);
+	dh = DisplayHeight(d, screen);
+	if((w = FindWindowX(d, RootWindow(d, screen), pname)) == 0) {
+		ga_error("FindWindowX failed for %s/%s\n", pdisplay, pname);
+		XCloseDisplay(d);
+		return -1;
+	}
+	if(GetClientRectX(d, screen, w, rect) < 0) {
+		ga_error("GetClientRectX failed for %s/%s\n", pdisplay, pname);
+		XCloseDisplay(d);
+		return -1;
+	}
+	XRaiseWindow(d, w);
+	XSetInputFocus(d, w, RevertToNone, CurrentTime);
+	XCloseDisplay(d);
+	// size check: multiples of 2?
+	if((rect->right - rect->left + 1) % 2 != 0)
+		rect->left--;
+	if((rect->bottom - rect->top + 1) % 2 != 0)
+		rect->top--;
+	// window is all visible?
+	if(rect->left < 0 || rect->top < 0 || rect->right >= dw || rect->bottom >= dh) {
+		ga_error("Invalid window: (%d,%d)-(%d,%d) w=%d h=%d (screen dimension = %dx%d).\n",
+			rect->left, rect->top, rect->right, rect->bottom,
+			rect->right - rect->left + 1,
+			rect->bottom - rect->top + 1,
+			dw, dh);
+		return -1;
+	}
+	//
 	*prect = rect;
-#endif
-	return 0;
+	return 1;
 }
 #endif
 
 void
 ga_backtrace() {
-#if defined WIN32 || defined ANDROID
+#if defined(WIN32) || defined(ANDROID)
 	return;
 #else
 	int j, nptrs;

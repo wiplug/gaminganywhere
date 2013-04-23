@@ -498,11 +498,12 @@ License: Creative Commons Attribution
 <div>&nbsp;</div><div>&nbsp;</div>
 <h3> HOW TO BUILD on supported POSIX platforms (Linux and Mac OS X)</h3>
 
-<h4>  Prerequisites:</h4>
+<h4>Prerequisites:</h4>
 	- GNU C++ compiler.<br>
 	- pkg-config.<br>
-	- libX11, libXext, libXtst, libasound.<br><p></p>
+	- libX11, libXext, libXtst, libfreetype6, libasound2 (both binaries and development files)<br><p></p>
 
+<h4>Steps:</h4>
 <ol><li>
   Edit the 'env-setup' script to ensure that GADEPS points to a
      correct directory. It should be an absolute path to
@@ -528,6 +529,7 @@ License: Creative Commons Attribution
 	- DirectX SDK.<br>
 	- Microsoft SDK (may be installed with VS 2010).<br><p></p>
 
+<h4>Steps:</h4>
 <ol>
   <li> Install dependencies by running 'install.cmd' in 'deps.pkgs.win32'
      directory.</li>
