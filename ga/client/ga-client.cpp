@@ -630,7 +630,7 @@ main(int argc, char *argv[]) {
 	rtsperror("Remote server @ %s:%d\n", rtspconf->servername, rtspconf->serverport);
 	//
 	if(SDL_Init(SDL_INIT_EVERYTHING) < 0) {
-		rtsperror("SDL init failed.\n");
+		rtsperror("SDL init failed: %s\n", SDL_GetError());
 		return -1;
 	}
 #if ! SDL_VERSION_ATLEAST(2,0,0)

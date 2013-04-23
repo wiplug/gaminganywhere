@@ -47,8 +47,9 @@ ga_conf_trim(char *buf) {
 	while(*buf && isspace(*buf))
 		buf++;
 	// remove section
-	if((ptr = strchr(buf, '[')) != NULL) {
-		*ptr = '\0';
+	if(buf[0] == '[') {
+		buf[0] = '\0';
+		return buf;
 	}
 	// remove comments
 	if((ptr = strchr(buf, '#')) != NULL)
@@ -433,13 +434,16 @@ ga_conf_mapvalue(const char *mapname, char *valstore, int vlen) {
 char *
 ga_conf_mapnextkey(const char *mapname, char *keystore, int klen) {
 	map<string,gaConfVar>::iterator mi;
+	string k = "";
+	//
 	if((mi = ga_vars.find(mapname)) == ga_vars.end())
 		return NULL;
-	if(mi->second.mnextkey() == "")
+	k = mi->second.mnextkey();
+	if(k == "")
 		return NULL;
 	if(keystore == NULL)
-		return strdup(mi->second.mnextkey().c_str());
-	strncpy(keystore, mi->second.mnextkey().c_str(), klen);
+		return strdup(k.c_str());
+	strncpy(keystore, k.c_str(), klen);
 	return keystore;
 }
 

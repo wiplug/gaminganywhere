@@ -187,6 +187,8 @@ ga_avcodec_vencoder_init(AVCodecContext *ctx, AVCodec *codec, int width, int hei
 				(*vso)[i].c_str(),
 				(*vso)[i+1].c_str());
 		}
+	} else {
+		ga_error("vencoder-init: using default video encoder parameter.\n");
 	}
 
 	pthread_mutex_lock(&avcodec_open_mutex);
