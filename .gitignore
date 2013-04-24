@@ -12,6 +12,7 @@
 *.la
 *.a
 /deps.win32
+/deps.posix
 *.obj
 
 *.exp
