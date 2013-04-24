@@ -1,0 +1,8 @@
+/encoder-audio.dll
+/encoder-video.dll
+/filter-rgb2yuv.dll
+/vsource-desktop.dll
+/vsource-desktop-d3d.dll
+/vsource-desktop-dfm.dll
+/asource-system.dll
+/ctrl-sdl.dll
