@@ -11,12 +11,18 @@ export PATH=$GADEPS/bin:$PATH
 cd $GAPATH
 
 # Build the dependencies
-cd deps.src/
-make || exit 1;
-cd ../
+if [ ! -d "deps.posix" ]; then
+	echo "*** Building dependencies ***"
+	cd deps.src/
+	make || exit 1;
+	cd ../
+fi
 
 # Build GamingAnywhere
+echo "*** Building GamingAnywhere ***"
 cd ga/
 make all || exit 1;
 make install || exit 1;
 cd ../
+
+echo "*** Done. ***"
